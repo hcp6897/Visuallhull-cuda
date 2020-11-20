@@ -6,6 +6,7 @@
 conda create -n cuda
 conda activate cuda
 
-conda install cudatoolkit
+//use 'nvidia-smi' to know which cuda version you have
+conda install cudatoolkit=10.1
 conda install numba
 ```
