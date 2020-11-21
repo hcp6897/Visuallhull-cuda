@@ -5,6 +5,9 @@ from time import time
 from skimage import measure
 import open3d as o3d
 
+from args import build_argparser
+args = build_argparser().parse_args()
+
 @cuda.jit
 def checkVoxel(cameras, imgs, tsdf, n):
     idx = cuda.threadIdx.x + cuda.blockDim.x * cuda.blockIdx.x
@@ -47,9 +50,10 @@ def visuallhull():
     camParams=[]
     silhouetteImgs=[]  
 
+    
     # 讀取圖片跟cameraPose
-    folder = '../resources/1'
-    with open(folder+'./camera.json') as f:
+    folder = os.path.dirname(args.config)
+    with open(args.config) as f:
         data = json.load(f)
     for cam in data['arr']:
         #print(cam)
@@ -60,10 +64,11 @@ def visuallhull():
             [cam['mat']['e30'],cam['mat']['e31'],cam['mat']['e32'],cam['mat']['e33']],
         ])
         silhouetteImgs.append(
-            cv2.imread(folder+cam['img'])
+            cv2.imread(os.path.join(folder,cam['img']))
         )
     
-    n = 512
+    n = args.resolution
+    print('resolution: {0}*{0}*{0}'.format(n))
     x = np.array(camParams)
     y = np.array(silhouetteImgs)
 
@@ -109,7 +114,7 @@ def visuallhull():
     mesh = o3d.geometry.TriangleMesh()
     mesh.vertices = o3d.utility.Vector3dVector(verts)
     mesh.triangles = o3d.utility.Vector3iVector(faces)
-    o3d.io.write_triangle_mesh('./mesh2.ply', mesh)
+    o3d.io.write_triangle_mesh(os.path.join(args.output,'./visaulhullMesh_{0}.ply'.format(n)), mesh)
 
     # # Debug view TSDF
     # npPcd = []
