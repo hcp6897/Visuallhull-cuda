@@ -48,7 +48,7 @@ def visuallhull():
     silhouetteImgs=[]  
 
     # 讀取圖片跟cameraPose
-    folder = '../resources'
+    folder = '../resources/1'
     with open(folder+'./camera.json') as f:
         data = json.load(f)
     for cam in data['arr']:
@@ -63,7 +63,7 @@ def visuallhull():
             cv2.imread(folder+cam['img'])
         )
     
-    n = 512
+    n = 100
     x = np.array(camParams)
     y = np.array(silhouetteImgs)
 
@@ -85,6 +85,14 @@ def visuallhull():
     result = gpu_result.copy_to_host()
 
     verts, faces, normals, values = measure.marching_cubes(result.reshape((n,n,n)),0)
+    verts[:,1] *= -1
+    verts[:,1] += n
+    verts/=n
+    verts-=0.5
+    verts*=3
+    x = np.array(verts[:,0])
+    verts[:,0] = verts[:,2]
+    verts[:,2] = x
     print("marching cube time" + str(time() - start))
 
     mesh = o3d.geometry.TriangleMesh()
@@ -105,11 +113,10 @@ def visuallhull():
     #     posy = (y/n-0.5)*3
     #     posz = (z/n-0.5)*3
 
-    #     npPcd.append([posx,posy,posz])
-    #     if value == 1:
-    #         npColor.append([1.0,0.0,0.0])
-    #     else:
+    #     if not value == 1:
     #         npColor.append([0.0,1.0,0.0])
+    #         npPcd.append([posx,posy,posz])
+
 
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(np.array(npPcd))
