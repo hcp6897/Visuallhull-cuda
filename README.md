@@ -14,3 +14,13 @@ conda install -c conda-forge opencv
 pip install scikit-image
 pip install open3d
 ```
+
+- Errors
+
+    - ImportError: libGL.so.1: cannot open shared object file: No such file or directory。
+    
+        ```
+        apt update
+        apt install libgl1-mesa-glx
+        ```
+
