@@ -63,7 +63,7 @@ def visuallhull():
             cv2.imread(folder+cam['img'])
         )
     
-    n = 100
+    n = 512
     x = np.array(camParams)
     y = np.array(silhouetteImgs)
 
@@ -79,7 +79,18 @@ def visuallhull():
     start = time()
     checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
     cuda.synchronize()
-    print("gpu vector add time " + str(time() - start))
+    print("gpu 1st checkvoxel time " + str(time() - start))
+    
+    start = time()
+    checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
+    cuda.synchronize()
+    print("gpu 2nd checkvoxel time " + str(time() - start))
+
+    start = time()
+    checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
+    cuda.synchronize()
+    print("gpu 3rd checkvoxel time " + str(time() - start))
+
     
     start = time()
     result = gpu_result.copy_to_host()
@@ -93,7 +104,7 @@ def visuallhull():
     x = np.array(verts[:,0])
     verts[:,0] = verts[:,2]
     verts[:,2] = x
-    print("marching cube time" + str(time() - start))
+    print("marching cube time " + str(time() - start))
 
     mesh = o3d.geometry.TriangleMesh()
     mesh.vertices = o3d.utility.Vector3dVector(verts)
