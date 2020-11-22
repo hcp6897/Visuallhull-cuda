@@ -48,7 +48,7 @@ def checkVoxel(cameras, imgs, tsdf, n):
 def visuallhull():
 
     camParams=[]
-    silhouetteImgs=[]  
+    silhouetteImgs=[]
 
     
     # 讀取圖片跟cameraPose
@@ -105,7 +105,7 @@ def visuallhull():
     verts[:,1] += n
     verts/=n
     verts-=0.5
-    verts*=3
+    verts*=5
     x = np.array(verts[:,0])
     verts[:,0] = verts[:,2]
     verts[:,2] = x

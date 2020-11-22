@@ -12,8 +12,12 @@ def build_argparser():
 
     args.add_argument("-i", "--config",
                       type=str, default='../resources/1/camera.json', help="input config file.")
-
+    
     args.add_argument("-o", "--output",
                       type=str, default='./', help="output visual hull mesh.")
+
+    args.add_argument("-m", "--model",
+                      type=str, default='../resources/1/visualhullMesh.ply', help="visual hull result for texture.")
+
 
     return parser
