@@ -11,13 +11,13 @@ def build_argparser():
                       type=int, default=512, help="unproject voxel resolution N*N*N.")
 
     args.add_argument("-i", "--config",
-                      type=str, default='../resources/1/camera.json', help="input config file.")
+                      type=str, default='../resources/camera.json', help="input config file.")
     
     args.add_argument("-o", "--output",
                       type=str, default='./', help="output visual hull mesh.")
 
     args.add_argument("-m", "--model",
-                      type=str, default='../resources/1/visualhullMesh.ply', help="visual hull result for texture.")
+                      type=str, default='../resources/visualhullMesh.ply', help="visual hull result for texture.")
 
 
     return parser

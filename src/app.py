@@ -31,40 +31,37 @@ def checkVoxel(cameras, imgs, tsdf, n):
             projectY = (cameras[i][1][0]*posx+cameras[i][1][1]*posy+cameras[i][1][2]*posz+cameras[i][1][3]*posw)/projectW
             projectZ = (cameras[i][2][0]*posx+cameras[i][2][1]*posy+cameras[i][2][2]*posz+cameras[i][2][3]*posw)/projectW        
             u,v = projectY*0.5+0.5,projectX*0.5+0.5
-            
             w = len(imgs[i])
             h = len(imgs[i][0])
 
             if u<=1.0 and u>=0.0 and v<=1.0 and v>=0.0:
+                u = 1-u
                 if imgs[i][int(u*w)][int(h*v)][0] > 10 or imgs[i][int(u*w)][int(h*v)][1] > 10 or imgs[i][int(u*w)][int(h*v)][2] > 10 :
                     count += 1
 
         if count == len(cameras):
-            tsdf[idx]= 0
+            tsdf[idx]= 1
         else:
-            tsdf[idx] = 1
+            tsdf[idx] = 0
 
 
-def visuallhull():
+def visuallhull(idx,cams):
 
     camParams=[]
     silhouetteImgs=[]
-
     
     # 讀取圖片跟cameraPose
     folder = os.path.dirname(args.config)
-    with open(args.config) as f:
-        data = json.load(f)
-    for cam in data['arr']:
+    for cam in cams:
         #print(cam)
         camParams.append([
-            [cam['mat']['e00'],cam['mat']['e01'],cam['mat']['e02'],cam['mat']['e03']],
-            [cam['mat']['e10'],cam['mat']['e11'],cam['mat']['e12'],cam['mat']['e13']],
-            [cam['mat']['e20'],cam['mat']['e21'],cam['mat']['e22'],cam['mat']['e23']],
-            [cam['mat']['e30'],cam['mat']['e31'],cam['mat']['e32'],cam['mat']['e33']],
+            [cam['world2screenMat']['e00'],cam['world2screenMat']['e01'],cam['world2screenMat']['e02'],cam['world2screenMat']['e03']],
+            [cam['world2screenMat']['e10'],cam['world2screenMat']['e11'],cam['world2screenMat']['e12'],cam['world2screenMat']['e13']],
+            [cam['world2screenMat']['e20'],cam['world2screenMat']['e21'],cam['world2screenMat']['e22'],cam['world2screenMat']['e23']],
+            [cam['world2screenMat']['e30'],cam['world2screenMat']['e31'],cam['world2screenMat']['e32'],cam['world2screenMat']['e33']],
         ])
         silhouetteImgs.append(
-            cv2.imread(os.path.join(folder,cam['img']))
+            cv2.imread(os.path.join(folder,cam['img'][idx]))
         )
     
     n = args.resolution
@@ -101,8 +98,6 @@ def visuallhull():
     result = gpu_result.copy_to_host()
 
     verts, faces, normals, values = measure.marching_cubes(result.reshape((n,n,n)),0)
-    verts[:,1] *= -1
-    verts[:,1] += n
     verts/=n
     verts-=0.5
     verts*=5
@@ -114,7 +109,7 @@ def visuallhull():
     mesh = o3d.geometry.TriangleMesh()
     mesh.vertices = o3d.utility.Vector3dVector(verts)
     mesh.triangles = o3d.utility.Vector3iVector(faces)
-    o3d.io.write_triangle_mesh(os.path.join(args.output,'./visaulhullMesh_{0}.ply'.format(n)), mesh)
+    o3d.io.write_triangle_mesh(os.path.join(args.output,'./visaulhullMesh_{0}_{1}.ply'.format(idx,n)), mesh)
 
     # # Debug view TSDF
     # npPcd = []
@@ -141,4 +136,11 @@ def visuallhull():
 
 
 if __name__ == "__main__":
-    visuallhull()
+    with open(args.config) as f:
+        data = json.load(f)
+        
+    visuallhull(0,data['camera'])
+    visuallhull(1,data['camera'])
+    visuallhull(2,data['camera'])
+    visuallhull(3,data['camera'])
+
