@@ -1,7 +1,6 @@
 vertex_shader =\
 '''
 #version 120
-uniform mat4 normalizeMat;
 uniform mat4 worldToSrcreen;
 varying float z;
 

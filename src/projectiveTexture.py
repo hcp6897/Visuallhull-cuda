@@ -14,6 +14,89 @@ from components.opengl.Mesh import *
 from components.opengl.Uniform import *
 from components.opengl.FrameBuffer import *
 
+import components.opengl.shaderLib.ProjectiveTextures as ProjectiveTextures
+import components.opengl.shaderLib.DepthMap as DepthMap
+from components.opengl.BufferGeometry import *
+class PojectiveTextureMesh():
+    def __init__(self,scene,count=2):
+        
+        self.scene = scene
+
+        self.geoModel = BufferGeometry()
+
+        self.textureCount = count
+        # prepare depth test textures when projecting RGB textures
+        self.depthMaps = []
+        self.depthMapModels = []
+
+        self.initProjectDepthTest()
+        self.initMesh()       
+
+    def initMesh(self):
+        self.uniformModel = Uniform()        
+        for i in range(self.textureCount):
+            self.uniformModel.addTexture('depthMap[{0}]'.format(i),self.depthMaps[i])
+            self.uniformModel.addTexture('projectTex[{0}]'.format(i),Texture(np.zeros((2,2))))
+            self.uniformModel.addMat4('projectMat[{0}]'.format(i),np.identity(4))
+
+        self.uniformModel.addMat4('normalizeMat', np.identity(4))
+        matModel = ShaderMaterial(ProjectiveTextures.vertex_shader,
+                            ProjectiveTextures.fragment_shader(self.textureCount),
+                            self.uniformModel)
+
+        model = Mesh(matModel, self.geoModel)
+        model.wireframe = False
+        self.scene.add(model)
+
+    def initProjectDepthTest(self):                    
+        self.scene.startDraw()
+
+        for i in range(self.textureCount):
+            self.depthMaps.append(FrameBuffer(self.scene.size))
+
+            depthMapUniform = Uniform()
+            depthMapUniform.addMat4('worldToSrcreen',np.identity(4))
+            matdepthMapModel = ShaderMaterial(DepthMap.vertex_shader,DepthMap.fragment_shader,depthMapUniform)
+            depthMapModel = Mesh(matdepthMapModel, self.geoModel)
+            depthMapModel.init()
+            self.depthMapModels.append(depthMapModel)
+
+        self.scene.endDraw()
+
+    def renderDepthTestTextures(self):
+        for i in range(self.textureCount):
+            self.depthMaps[i].updateResolution(self.scene.size)
+            self.depthMaps[i].startDraw()
+            self.depthMapModels[i].draw()
+            self.depthMaps[i].endDraw()
+
+    def loadPly(self,filename):
+        self.scene.startDraw()
+        sucess = self.geoModel.readObj(filename)
+        if sucess:
+            self.uniformModel.setValue('normalizeMat',self.geoModel.getNormalizeMat())
+        self.scene.endDraw()
+
+    def loadTexturesAndMats(self,camParams,silhouetteImgs):
+        self.scene.startDraw()
+
+        for i in range(self.textureCount):
+            silhouetteImg = Texture(silhouetteImgs[i])
+            silhouetteImg.init()
+            
+            self.uniformModel.setValue('projectTex[{0}]'.format(i),silhouetteImg)
+            self.uniformModel.setValue('projectMat[{0}]'.format(i),camParams[i])
+            self.depthMapModels[i].material.uniform.setValue('worldToSrcreen',camParams[i])
+
+        self.scene.endDraw()
+
+    def render(self):
+        self.uniformModel.setValue('viewPos', [
+        self.scene.camera.position[0],
+        self.scene.camera.position[1],
+        self.scene.camera.position[2]]
+        )
+
 from args import build_argparser
 args = build_argparser().parse_args()
 
@@ -21,64 +104,21 @@ app = QtWidgets.QApplication(sys.argv)
 MainWindow = QtWidgets.QMainWindow()
 ui = Ui_MainWindow()
 ui.setupUi(MainWindow)
-
 scene = QtGLScene(ui.openGLWidget)
+MainWindow.show()
 
-uniformModel = Uniform()
+# projective texture model
+mesh = PojectiveTextureMesh(scene)
+scene.customRender.append(mesh.renderDepthTestTextures)
 
 def mainloop():
-    uniformModel.setValue('viewPos', [
-        scene.camera.position[0],
-        scene.camera.position[1],
-        scene.camera.position[2]])
+    mesh.render()
     scene.startDraw()
     scene.endDraw()
 
-MainWindow.show()
 timer = QTimer(MainWindow)
 timer.timeout.connect(mainloop)
 timer.start(1)
-
-# projective texture model 
-tex1 = Texture(np.zeros((2,2)))
-depthMap = FrameBuffer(scene.size)
-uniformModel.addTexture('depthMap',depthMap)
-uniformModel.addTexture('projectTex',tex1)
-uniformModel.addMat4('projectMat',np.identity(4))
-uniformModel.addMat4('normalizeMat', np.identity(4))
-
-import components.opengl.shaderLib.PhongShading as PhongShading
-matModel = ShaderMaterial(PhongShading.vertex_shader,
-                     PhongShading.fragment_shader,
-                     uniformModel)
-
-from components.opengl.BufferGeometry import *
-geoModel = BufferGeometry()
-model = Mesh(matModel, geoModel)
-model.wireframe = False
-scene.add(model)
-
-# depth test for project texture
-depthMapUniform = Uniform()
-depthMapUniform.addMat4('normalizeMat', np.identity(4))
-depthMapUniform.addMat4('worldToSrcreen',np.identity(4))
-# camera pose test
-import components.opengl.shaderLib.DepthMap as DepthMap
-matdepthMapModel = ShaderMaterial(DepthMap.vertex_shader,
-                     DepthMap.fragment_shader,
-                     depthMapUniform)
-depthMapModel = Mesh(matdepthMapModel, geoModel)
-
-scene.startDraw()
-depthMapModel.init()
-scene.endDraw()
-def customPaint():
-    depthMap.updateResolution(scene.size)
-    depthMap.startDraw()
-    depthMapModel.draw()
-    depthMap.endDraw()
-
-scene.customRender.append(customPaint)
 
 def importResource():
     qfd = QFileDialog()
@@ -106,23 +146,10 @@ def importResource():
                 silhouetteImgs.append(
                     cv2.imread(os.path.join(folder,cam['img'][2]))
                 )
+            mesh.loadTexturesAndMats(camParams,silhouetteImgs)
 
-            index = 5
-            scene.startDraw()
-            silhouetteImg = Texture(silhouetteImgs[index])
-            silhouetteImg.init()
-            uniformModel.setValue('projectTex',silhouetteImg)
-            uniformModel.setValue('projectMat',camParams[index])
-            depthMapUniform.setValue('worldToSrcreen',camParams[index])
-            scene.endDraw()             
- 
         elif '.ply' in filename:
-            scene.startDraw()
-            sucess = geoModel.readObj(filename)
-            if sucess:
-                uniformModel.setValue('normalizeMat',geoModel.getNormalizeMat())                
-            
-            scene.endDraw()
+            mesh.loadPly(filename)
 
 ui.actionimport.triggered.connect(importResource)
 
