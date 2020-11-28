@@ -40,9 +40,9 @@ def checkVoxel(cameras, imgs, tsdf, n):
                     count += 1
 
         if count == len(cameras):
-            tsdf[idx]= 1
+            tsdf[idx]= 0
         else:
-            tsdf[idx] = 0
+            tsdf[idx] = 1
 
 
 def visuallhull(idx,cams):
@@ -104,6 +104,7 @@ def visuallhull(idx,cams):
     x = np.array(verts[:,0])
     verts[:,0] = verts[:,2]
     verts[:,2] = x
+    verts[:,1] *= -1
     print("marching cube time " + str(time() - start))
 
     mesh = o3d.geometry.TriangleMesh()
@@ -111,7 +112,7 @@ def visuallhull(idx,cams):
     mesh.triangles = o3d.utility.Vector3iVector(faces)
     o3d.io.write_triangle_mesh(os.path.join(args.output,'./visaulhullMesh_{0}_{1}.ply'.format(idx,n)), mesh)
 
-    # # Debug view TSDF
+    # Debug view TSDF
     # npPcd = []
     # npColor = []
     # for idx,value in enumerate(result):
@@ -120,11 +121,11 @@ def visuallhull(idx,cams):
     #     y = n - zRemain/n
     #     x = zRemain%n
         
-    #     posx = (x/n-0.5)*3
-    #     posy = (y/n-0.5)*3
-    #     posz = (z/n-0.5)*3
+    #     posx = (x/n-0.5)*5
+    #     posy = (y/n-0.5)*5
+    #     posz = (z/n-0.5)*5
 
-    #     if not value == 1:
+    #     if value == 0:
     #         npColor.append([0.0,1.0,0.0])
     #         npPcd.append([posx,posy,posz])
 
@@ -138,9 +139,6 @@ def visuallhull(idx,cams):
 if __name__ == "__main__":
     with open(args.config) as f:
         data = json.load(f)
-        
-    visuallhull(0,data['camera'])
-    visuallhull(1,data['camera'])
+
     visuallhull(2,data['camera'])
-    visuallhull(3,data['camera'])
 
