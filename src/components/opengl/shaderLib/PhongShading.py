@@ -41,7 +41,6 @@ uniform mat4 projectMat;
 
 void main() {
     vec4 p = projectMat * pos;
-    p.y *=-1;
     p /= p.w;
     float depthValue = texture2D(depthMap,p.xy*0.5+0.5).x;
     vec3 color = vec3(1.0,0.0,0.0);
@@ -64,7 +63,7 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * lightColor;        
 
-    vec3 result = (ambient + diffuse + specular) * color;
+    vec3 result = (ambient + diffuse + specular) * vec3(1.0,1.0,1.0);
     gl_FragColor = vec4(color, 1.0);
 }
 '''

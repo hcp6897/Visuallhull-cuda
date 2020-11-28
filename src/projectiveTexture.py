@@ -95,19 +95,19 @@ def importResource():
             with open(filename) as f:
                 data = json.load(f)
 
-            for cam in data['arr']:
+            for cam in data['camera']:
                 #print(cam)
                 camParams.append([
-                    [cam['mat']['e00'],cam['mat']['e01'],cam['mat']['e02'],cam['mat']['e03']],
-                    [cam['mat']['e10'],cam['mat']['e11'],cam['mat']['e12'],cam['mat']['e13']],
-                    [cam['mat']['e20'],cam['mat']['e21'],cam['mat']['e22'],cam['mat']['e23']],
-                    [cam['mat']['e30'],cam['mat']['e31'],cam['mat']['e32'],cam['mat']['e33']],
+                    [cam['world2screenMat']['e00'],cam['world2screenMat']['e01'],cam['world2screenMat']['e02'],cam['world2screenMat']['e03']],
+                    [cam['world2screenMat']['e10'],cam['world2screenMat']['e11'],cam['world2screenMat']['e12'],cam['world2screenMat']['e13']],
+                    [cam['world2screenMat']['e20'],cam['world2screenMat']['e21'],cam['world2screenMat']['e22'],cam['world2screenMat']['e23']],
+                    [cam['world2screenMat']['e30'],cam['world2screenMat']['e31'],cam['world2screenMat']['e32'],cam['world2screenMat']['e33']],
                 ])
                 silhouetteImgs.append(
-                    cv2.imread(os.path.join(folder,cam['img']))
+                    cv2.imread(os.path.join(folder,cam['img'][2]))
                 )
 
-            index = 0
+            index = 5
             scene.startDraw()
             silhouetteImg = Texture(silhouetteImgs[index])
             silhouetteImg.init()

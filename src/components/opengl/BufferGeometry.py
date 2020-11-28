@@ -46,7 +46,7 @@ class BufferGeometry:
 
         return [
             [-scale, 0.0, 0.0, center_x*scale],
-            [0.0, -scale, 0.0, center_y*scale],
+            [0.0, scale, 0.0, -center_y*scale],
             [0.0, 0.0, scale, -center_z*scale],
             [0.0, 0.0, 0.0, 1.0]
         ]       

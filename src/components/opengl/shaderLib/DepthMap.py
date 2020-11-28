@@ -7,7 +7,6 @@ varying float z;
 
 void main() {
     vec4 p = worldToSrcreen * gl_Vertex;
-    p.y *=-1;
     p /= p.w;
     gl_Position = p;
     z = gl_Position.z;
