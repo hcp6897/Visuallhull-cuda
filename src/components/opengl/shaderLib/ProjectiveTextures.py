@@ -70,10 +70,10 @@ def fragment_shader(texturesCount):
         vec4 p = mat * pos;
         p /= p.w;
         vec2 uv = p.xy*0.5+0.5;
-
+        
         // shrink boundary
         float isBoundary = 1;
-        int kernelsize=3;
+        int kernelsize=5;
         for(int i=-(kernelsize-1)/2;i<=(kernelsize-1)/2;i++){{
             float isZero = 0;
             for(int j=-(kernelsize-1)/2;j<=(kernelsize-1)/2;j++){{
@@ -91,14 +91,11 @@ def fragment_shader(texturesCount):
         if (isBoundary==0){{
             return vec4(0.0,0.0,0.0,0.0);
         }}
-
+    
         vec4 color = vec4(0.0,0.0,0.0,0.0);
         float depthValue = texture2D(depthMap,uv).x;
         if ((p.z-depthValue)<3e-3){{
             color = texture2D(tex,uv);
-            if(color.x<1e-1&&color.y<1e-1&&color.z<1e-1){{
-                color = vec4(0.0,0.0,0.0,0.0);
-            }}
         }}
         return color;
     }}
@@ -113,7 +110,7 @@ def fragment_shader(texturesCount):
                 validCount++;
             }}
         }}
-        return vec4(finalColor.xyz/validCount,1.0);        
+        return vec4(finalColor.xyz/validCount,finalColor.a);        
     }}
 
     vec4 getClosetCamera(){{
@@ -149,5 +146,5 @@ def fragment_shader(texturesCount):
 
     void main() {{
         int i = 0;
-        gl_FragColor = projectColor(projectTex[i],depthMap[i],projectMat[i]);
+        gl_FragColor = blendviewColors();
     }}'''.format(texturesCount)

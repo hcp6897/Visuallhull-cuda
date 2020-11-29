@@ -83,6 +83,10 @@ class PojectiveTextureMesh():
     def loadTexturesAndMats(self,camParams,silhouetteImgs,camPoses):
         self.scene.startDraw()
 
+        if len(silhouetteImgs)>0 :
+            self.uniformModel.setValue('wstep',1/silhouetteImgs[0].shape[0])
+            self.uniformModel.setValue('hstep',1/silhouetteImgs[0].shape[0])
+
         for i in range(self.textureCount):
             silhouetteImg = Texture(silhouetteImgs[i])
             silhouetteImg.init()
@@ -95,8 +99,6 @@ class PojectiveTextureMesh():
         self.scene.endDraw()
 
     def render(self):
-        self.uniformModel.addFloat('wstep',1/self.scene.size[0])
-        self.uniformModel.addFloat('hstep',1/self.scene.size[1])
         self.uniformModel.setValue('viewPos', [
         self.scene.camera.position[0],
         self.scene.camera.position[1],
