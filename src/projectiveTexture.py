@@ -18,7 +18,7 @@ import components.opengl.shaderLib.ProjectiveTextures as ProjectiveTextures
 import components.opengl.shaderLib.DepthMap as DepthMap
 from components.opengl.BufferGeometry import *
 class PojectiveTextureMesh():
-    def __init__(self,scene,count=2):
+    def __init__(self,scene,count=3):
         
         self.scene = scene
 
@@ -35,8 +35,11 @@ class PojectiveTextureMesh():
     def initMesh(self):
         self.uniformModel = Uniform()        
         for i in range(self.textureCount):
+            self.uniformModel.addFloat('wstep',1e-2)
+            self.uniformModel.addFloat('hstep',1e-2)
             self.uniformModel.addTexture('depthMap[{0}]'.format(i),self.depthMaps[i])
             self.uniformModel.addTexture('projectTex[{0}]'.format(i),Texture(np.zeros((2,2))))
+            self.uniformModel.addvec3('cameraPose[{0}]'.format(i),np.array([0,0,0]))
             self.uniformModel.addMat4('projectMat[{0}]'.format(i),np.identity(4))
 
         self.uniformModel.addMat4('normalizeMat', np.identity(4))
@@ -77,7 +80,7 @@ class PojectiveTextureMesh():
             self.uniformModel.setValue('normalizeMat',self.geoModel.getNormalizeMat())
         self.scene.endDraw()
 
-    def loadTexturesAndMats(self,camParams,silhouetteImgs):
+    def loadTexturesAndMats(self,camParams,silhouetteImgs,camPoses):
         self.scene.startDraw()
 
         for i in range(self.textureCount):
@@ -86,11 +89,14 @@ class PojectiveTextureMesh():
             
             self.uniformModel.setValue('projectTex[{0}]'.format(i),silhouetteImg)
             self.uniformModel.setValue('projectMat[{0}]'.format(i),camParams[i])
+            self.uniformModel.setValue('cameraPose[{0}]'.format(i),camPoses[i])
             self.depthMapModels[i].material.uniform.setValue('worldToSrcreen',camParams[i])
 
         self.scene.endDraw()
 
     def render(self):
+        self.uniformModel.addFloat('wstep',1/self.scene.size[0])
+        self.uniformModel.addFloat('hstep',1/self.scene.size[1])
         self.uniformModel.setValue('viewPos', [
         self.scene.camera.position[0],
         self.scene.camera.position[1],
@@ -126,6 +132,7 @@ def importResource():
     filenames,_ = QFileDialog.getOpenFileNames(qfd,'import', './', filter)
 
     camParams=[]
+    camPoses=[]
     silhouetteImgs=[]
 
     for filename in filenames:
@@ -143,10 +150,13 @@ def importResource():
                     [cam['world2screenMat']['e20'],cam['world2screenMat']['e21'],cam['world2screenMat']['e22'],cam['world2screenMat']['e23']],
                     [cam['world2screenMat']['e30'],cam['world2screenMat']['e31'],cam['world2screenMat']['e32'],cam['world2screenMat']['e33']],
                 ])
+                camPoses.append([
+                    cam['pos']['x'],cam['pos']['y'],cam['pos']['z']
+                ])
                 silhouetteImgs.append(
                     cv2.imread(os.path.join(folder,cam['img'][2]))
                 )
-            mesh.loadTexturesAndMats(camParams,silhouetteImgs)
+            mesh.loadTexturesAndMats(camParams,silhouetteImgs,camPoses)
 
         elif '.ply' in filename:
             mesh.loadPly(filename)
