@@ -20,7 +20,7 @@ import components.opengl.shaderLib.SeamBlur as PostProcessBlur
 
 from components.opengl.BufferGeometry import *
 class PojectiveTextureMesh():
-    def __init__(self,scene,count=2):
+    def __init__(self,scene,count=5):
         
         self.scene = scene
 
@@ -44,20 +44,23 @@ class PojectiveTextureMesh():
         self.keyframeColorMap = FrameBuffer(self.scene.size)
         self.keyframeSelectMap = FrameBuffer(self.scene.size)
 
+        self.postprocessPlane = BufferGeometry()
+        self.postprocessPlane.makePlane()
+
         self.uniformPostprocess = Uniform()
         self.uniformPostprocess.addTexture('selectionMap',self.keyframeSelectMap)
         self.uniformPostprocess.addTexture('colorMap',self.keyframeColorMap)
         self.uniformPostprocess.addFloat('wstep',1e-2)
         self.uniformPostprocess.addFloat('hstep',1e-2)
-        Postprocessmat = ShaderMaterial(PostProcessBlur.vertex_shader,
-                    PostProcessBlur.fragment_shader,
-                    self.uniformPostprocess)
 
-        self.postprocessPlane = BufferGeometry()
-        self.postprocessPlane.makePlane()
-        self.postprocessMesh = Mesh(Postprocessmat, self.postprocessPlane)
-        self.postprocessMesh.wireframe = False
-        self.scene.add(self.postprocessMesh)
+        for i in range(4):
+            Postprocessmat = ShaderMaterial(PostProcessBlur.vertex_shader(i),
+                        PostProcessBlur.fragment_shader(i),
+                        self.uniformPostprocess)
+
+            postprocessMesh = Mesh(Postprocessmat, self.postprocessPlane)
+            postprocessMesh.wireframe = False
+            self.scene.add(postprocessMesh)
 
         self.scene.endDraw()
 
@@ -107,6 +110,9 @@ class PojectiveTextureMesh():
         self.scene.endDraw()
 
     def renderKeyFrameMaps(self):
+        self.uniformPostprocess.setValue('wstep',1/self.scene.size[0])
+        self.uniformPostprocess.setValue('hstep',1/self.scene.size[1])
+
         self.keyframeColorMap.updateResolution(self.scene.size)
         self.keyframeColorMap.startDraw()
         self.colorModel.draw()
@@ -199,7 +205,6 @@ def importResource():
             for idx,cam in enumerate(data['camera']):
                 if idx%2 !=0 :
                     continue
-                #print(cam)
                 camParams.append([
                     [cam['world2screenMat']['e00'],cam['world2screenMat']['e01'],cam['world2screenMat']['e02'],cam['world2screenMat']['e03']],
                     [cam['world2screenMat']['e10'],cam['world2screenMat']['e11'],cam['world2screenMat']['e12'],cam['world2screenMat']['e13']],
@@ -209,6 +214,7 @@ def importResource():
                 camPoses.append([
                     cam['pos']['x'],cam['pos']['y'],cam['pos']['z']
                 ])
+                print(os.path.join(folder,cam['img'][0]))
                 silhouetteImgs.append(
                     cv2.imread(os.path.join(folder,cam['img'][0]))
                 )
@@ -220,7 +226,7 @@ def importResource():
 ui.actionimport.triggered.connect(importResource)
 
 def savePannelAsImage():
-    ui.openGLWidget_2.grabFramebuffer().save('./texture.png')
+    ui.openGLWidget.grabFramebuffer().save('./texture.png')
 
 ui.actionscreenshot.triggered.connect(savePannelAsImage)
 
