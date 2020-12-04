@@ -140,5 +140,5 @@ if __name__ == "__main__":
     with open(args.config) as f:
         data = json.load(f)
 
-    visuallhull(2,data['camera'])
+    visuallhull(0,data['camera'])
 
