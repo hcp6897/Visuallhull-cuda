@@ -29,6 +29,25 @@ class BufferGeometry:
         self.init()
         return True
 
+    def makePlane(self):
+        tirangles = np.array([
+            [-1,-1,0],
+            [-1,1,0],
+            [1,1,0],
+            [1,-1,0]
+        ])
+        faces = np.array([
+            [0,2,1],
+            [0,3,2]
+        ])
+
+        self.mesh = o3d.geometry.TriangleMesh(
+            vertices= o3d.utility.Vector3dVector(tirangles),
+            triangles= o3d.utility.Vector3iVector(faces)
+        )
+        self.mesh.compute_vertex_normals()
+        self.init()
+
     def getNormalizeMat(self):
 
         vertices = np.asarray(self.mesh.vertices, dtype='f')

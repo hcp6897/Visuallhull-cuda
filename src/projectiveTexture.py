@@ -16,9 +16,11 @@ from components.opengl.FrameBuffer import *
 
 import components.opengl.shaderLib.ProjectiveTextures as ProjectiveTextures
 import components.opengl.shaderLib.DepthMap as DepthMap
+import components.opengl.shaderLib.SeamBlur as PostProcessBlur
+
 from components.opengl.BufferGeometry import *
 class PojectiveTextureMesh():
-    def __init__(self,scene,count=3):
+    def __init__(self,scene,count=2):
         
         self.scene = scene
 
@@ -29,10 +31,37 @@ class PojectiveTextureMesh():
         self.depthMaps = []
         self.depthMapModels = []
 
-        self.initProjectDepthTest()
-        self.initMesh()       
+        # prepare colormap and keyframeColorMap to blend color on visual seams
+        self.keyframeColorMap = None
+        self.keyframeSelectMap = None
 
-    def initMesh(self):
+        self.initProjectDepthTest()
+        self.initKeyFrameMaps()       
+        self.initKeyFrameModels()       
+
+    def initKeyFrameMaps(self):
+        self.scene.startDraw()
+        self.keyframeColorMap = FrameBuffer(self.scene.size)
+        self.keyframeSelectMap = FrameBuffer(self.scene.size)
+
+        self.uniformPostprocess = Uniform()
+        self.uniformPostprocess.addTexture('selectionMap',self.keyframeSelectMap)
+        self.uniformPostprocess.addTexture('colorMap',self.keyframeColorMap)
+        self.uniformPostprocess.addFloat('wstep',1e-2)
+        self.uniformPostprocess.addFloat('hstep',1e-2)
+        Postprocessmat = ShaderMaterial(PostProcessBlur.vertex_shader,
+                    PostProcessBlur.fragment_shader,
+                    self.uniformPostprocess)
+
+        self.postprocessPlane = BufferGeometry()
+        self.postprocessPlane.makePlane()
+        self.postprocessMesh = Mesh(Postprocessmat, self.postprocessPlane)
+        self.postprocessMesh.wireframe = False
+        self.scene.add(self.postprocessMesh)
+
+        self.scene.endDraw()
+
+    def initKeyFrameModels(self):
         self.uniformModel = Uniform()        
         for i in range(self.textureCount):
             self.uniformModel.addFloat('wstep',1e-2)
@@ -43,13 +72,24 @@ class PojectiveTextureMesh():
             self.uniformModel.addMat4('projectMat[{0}]'.format(i),np.identity(4))
 
         self.uniformModel.addMat4('normalizeMat', np.identity(4))
-        matModel = ShaderMaterial(ProjectiveTextures.vertex_shader,
-                            ProjectiveTextures.fragment_shader(self.textureCount),
+        colormat = ShaderMaterial(ProjectiveTextures.vertex_shader,
+                            ProjectiveTextures.fragment_shader(self.textureCount,0),
                             self.uniformModel)
 
-        model = Mesh(matModel, self.geoModel)
-        model.wireframe = False
-        self.scene.add(model)
+        selectionmat = ShaderMaterial(ProjectiveTextures.vertex_shader,
+                    ProjectiveTextures.fragment_shader(self.textureCount,1),
+                    self.uniformModel)
+
+        self.colorModel = Mesh(colormat, self.geoModel)
+        self.colorModel.wireframe = False
+
+        self.selectionModel = Mesh(selectionmat, self.geoModel)
+        self.selectionModel.wireframe = False
+
+        self.scene.startDraw()
+        self.colorModel.init()
+        self.selectionModel.init()
+        self.scene.endDraw()
 
     def initProjectDepthTest(self):                    
         self.scene.startDraw()
@@ -65,6 +105,17 @@ class PojectiveTextureMesh():
             self.depthMapModels.append(depthMapModel)
 
         self.scene.endDraw()
+
+    def renderKeyFrameMaps(self):
+        self.keyframeColorMap.updateResolution(self.scene.size)
+        self.keyframeColorMap.startDraw()
+        self.colorModel.draw()
+        self.keyframeColorMap.endDraw()
+
+        self.keyframeSelectMap.updateResolution(self.scene.size)
+        self.keyframeSelectMap.startDraw()
+        self.selectionModel.draw()
+        self.keyframeSelectMap.endDraw()
 
     def renderDepthTestTextures(self):
         for i in range(self.textureCount):
@@ -118,6 +169,7 @@ MainWindow.show()
 # projective texture model
 mesh = PojectiveTextureMesh(scene)
 scene.customRender.append(mesh.renderDepthTestTextures)
+scene.customRender.append(mesh.renderKeyFrameMaps)
 
 def mainloop():
     mesh.render()
@@ -144,7 +196,9 @@ def importResource():
             with open(filename) as f:
                 data = json.load(f)
 
-            for cam in data['camera']:
+            for idx,cam in enumerate(data['camera']):
+                if idx%2 !=0 :
+                    continue
                 #print(cam)
                 camParams.append([
                     [cam['world2screenMat']['e00'],cam['world2screenMat']['e01'],cam['world2screenMat']['e02'],cam['world2screenMat']['e03']],
@@ -156,7 +210,7 @@ def importResource():
                     cam['pos']['x'],cam['pos']['y'],cam['pos']['z']
                 ])
                 silhouetteImgs.append(
-                    cv2.imread(os.path.join(folder,cam['img'][2]))
+                    cv2.imread(os.path.join(folder,cam['img'][0]))
                 )
             mesh.loadTexturesAndMats(camParams,silhouetteImgs,camPoses)
 
