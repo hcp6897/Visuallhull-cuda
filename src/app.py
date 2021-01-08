@@ -18,9 +18,9 @@ def checkVoxel(cameras, imgs, tsdf, n):
         y = n - zRemain/n
         x = zRemain%n
         
-        posx = (x/n-0.5)*5
-        posy = (y/n-0.5)*5
-        posz = (z/n-0.5)*5
+        posx = (x/n-0.5)*8
+        posy = (y/n-0.5)*8
+        posz = (z/n-0.5)*8
         posw = 1.0
 
         count = 0
@@ -36,13 +36,17 @@ def checkVoxel(cameras, imgs, tsdf, n):
 
             if u<=1.0 and u>=0.0 and v<=1.0 and v>=0.0:
                 u = 1-u
-                if imgs[i][int(u*w)][int(h*v)][0] > 10 or imgs[i][int(u*w)][int(h*v)][1] > 10 or imgs[i][int(u*w)][int(h*v)][2] > 10 :
+
+                db = (imgs[i][int(u*w)][int(h*v)][0]-39) 
+                dg = (imgs[i][int(u*w)][int(h*v)][1]-135)
+                dr = (imgs[i][int(u*w)][int(h*v)][2]-39)               
+                if (db**2+dg**2+dr**2)**0.5 > 1 :
                     count += 1
 
         if count == len(cameras):
-            tsdf[idx]= 0
+            tsdf[idx]= 1
         else:
-            tsdf[idx] = 1
+            tsdf[idx] = 0
 
 
 def visuallhull(idx,cams):
@@ -61,7 +65,7 @@ def visuallhull(idx,cams):
             [cam['world2screenMat']['e30'],cam['world2screenMat']['e31'],cam['world2screenMat']['e32'],cam['world2screenMat']['e33']],
         ])
         silhouetteImgs.append(
-            cv2.imread(os.path.join(folder,cam['img'][idx]))
+            cv2.imread(folder+cam['img'][idx])
         )
     
     n = args.resolution
@@ -81,18 +85,6 @@ def visuallhull(idx,cams):
     start = time()
     checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
     cuda.synchronize()
-    print("gpu 1st checkvoxel time " + str(time() - start))
-    
-    start = time()
-    checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
-    cuda.synchronize()
-    print("gpu 2nd checkvoxel time " + str(time() - start))
-
-    start = time()
-    checkVoxel[blocks_per_grid, threads_per_block](camerasMats, imgs, gpu_result, n)
-    cuda.synchronize()
-    print("gpu 3rd checkvoxel time " + str(time() - start))
-
     
     start = time()
     result = gpu_result.copy_to_host()
@@ -100,18 +92,20 @@ def visuallhull(idx,cams):
     verts, faces, normals, values = measure.marching_cubes(result.reshape((n,n,n)),0)
     verts/=n
     verts-=0.5
-    verts*=5
+    verts*=8
     x = np.array(verts[:,0])
     verts[:,0] = verts[:,2]
     verts[:,2] = x
     verts[:,1] *= -1
+    verts[:,0] *= -1
     print("marching cube time " + str(time() - start))
 
     mesh = o3d.geometry.TriangleMesh()
     mesh.vertices = o3d.utility.Vector3dVector(verts)
     mesh.triangles = o3d.utility.Vector3iVector(faces)
-    o3d.io.write_triangle_mesh(os.path.join(args.output,'./visaulhullMesh_{0}_{1}.ply'.format(idx,n)), mesh)
-
+    filename = './visaulhullMesh_{0}_{1}.obj'.format(idx,n)
+    o3d.io.write_triangle_mesh(os.path.join(args.output,filename), mesh)
+    return filename
     # Debug view TSDF
     # npPcd = []
     # npColor = []
@@ -135,10 +129,24 @@ def visuallhull(idx,cams):
     # pcd.colors = o3d.utility.Vector3dVector(np.array(npColor))
     # o3d.io.write_point_cloud('./pcd.ply', pcd)
 
+def writeJSON(jsonf,jsonData):
+    with open(jsonf, 'w+') as f:
+        f.seek(0)
+        # ascii for chinese 
+        json.dump(jsonData, f,ensure_ascii=False)
+        f.truncate()
 
 if __name__ == "__main__":
     with open(args.config) as f:
         data = json.load(f)
 
-    visuallhull(0,data['camera'])
+    data['visualhull']=[]
+
+    for i in range(15):
+        filename = visuallhull(i,data['camera'])
+        data['visualhull'].append(filename)
+    
+    writeJSON(args.config,data)
+
+    
 
